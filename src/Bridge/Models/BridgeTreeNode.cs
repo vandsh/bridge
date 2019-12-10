@@ -11,10 +11,9 @@ namespace Bridge.Models
         public string ClassName { get; set; }
         public string NodeAliasPath { get; set; }
         public string NodeSiteName { get; set; }
-        public int NodeId { get; set; }
         public Guid NodeGUID { get; set; }
         public string NodeName { get; set; }
-        public int NodeParentID { get; set; }
+        public Guid? ParentNodeGUID { get; set; }
 
         public string DocumentCulture { get; set; }
 

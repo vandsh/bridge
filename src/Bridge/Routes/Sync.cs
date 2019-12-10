@@ -8,6 +8,9 @@ using System.IO;
 using System.Text;
 using System.Web;
 using YamlDotNet.Serialization;
+using CMS.SiteProvider;
+using System.Linq;
+using System.Collections.Generic;
 
 namespace Bridge.Routes
 {
@@ -36,6 +39,7 @@ namespace Bridge.Routes
 
                     var concretePath = HttpContext.Current.Server.MapPath(serializationPath);
                     var yamlFiles = Directory.EnumerateFiles(concretePath, "*.yaml", SearchOption.AllDirectories);
+                    var allAllowedChildInfos = new List<AllowedChildClassInfo>();
                     foreach (string yamlFile in yamlFiles)
                     {
                         watch.Reset();
@@ -43,18 +47,42 @@ namespace Bridge.Routes
                         var yamlFileContent = File.ReadAllText(yamlFile);
                         var bridgeClassInfo = deserializer.Deserialize<BridgeClassInfo>(yamlFileContent);
 
-                        var newDCI = new DataClassInfo();
-                        foreach(var field in bridgeClassInfo.FieldValues)
+                        var newDCI = DataClassInfoProvider.GetDataClassInfo(bridgeClassInfo.ClassName);
+                        if (newDCI == null)
+                        {
+                            newDCI = new DataClassInfo();
+                        }
+                        foreach (var field in bridgeClassInfo.FieldValues)
                         {
                             newDCI[field.Key] = field.Value;
                         }
 
+                        foreach (var siteGUID in bridgeClassInfo.AssignedSites)
+                        {
+                            var site = SiteInfoProvider.GetSiteInfoByGUID(siteGUID);
+                            newDCI.AssignedSites.Add(site);
+                        }
+
                         DataClassInfoProvider.SetDataClassInfo(newDCI);
+
+
+                        foreach (var allowedType in bridgeClassInfo.AllowedChildTypes)
+                        {
+                            var classID = new ObjectQuery("cms.class", false).Where("ClassName", QueryOperator.Equals, allowedType).Column("ClassID").FirstOrDefault()["ClassID"].ToString();
+                            var acci = new AllowedChildClassInfo() { ChildClassID = int.Parse(classID), ParentClassID = newDCI.ClassID };
+                            allAllowedChildInfos.Add(acci);
+                        }
+
                         watch.Stop();
                         byte[] bytes = Encoding.UTF8.GetBytes($"Synced: {yamlFile.Replace(concretePath, "")} - {watch.ElapsedMilliseconds}ms");
                         stream.Write(bytes, 0, bytes.Length);
                         stream.WriteByte(10);
                         stream.Flush();
+                    }
+                    //at this point we should have all children, lets post process these
+                    foreach (var allowedChildClass in allAllowedChildInfos)
+                    {
+                        AllowedChildClassInfoProvider.SetAllowedChildClassInfo(allowedChildClass);
                     }
                 };
                 return response;
@@ -114,7 +142,7 @@ namespace Bridge.Routes
                             else
                             {
                                 //else, we can assume this is a new page and insert
-                                var parentTreeNode = tree.SelectSingleNode(bridgeTreeNode.NodeParentID, bridgeTreeNode.DocumentCulture);
+                                var parentTreeNode = tree.SelectSingleNode(bridgeTreeNode.ParentNodeGUID.GetValueOrDefault(), bridgeTreeNode.DocumentCulture, bridgeTreeNode.NodeSiteName);
                                 var newTreeNode = TreeNode.New(bridgeTreeNode.ClassName, tree);
                                 if (bridgeTreeNode.FieldValues != null)
                                 {
