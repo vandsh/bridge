@@ -1,0 +1,148 @@
+﻿@Master['MasterPage']
+
+@Section['Content']
+
+<div class="row">
+    <div class="card col-12 p-0" style="width: 18rem;">
+        <div class="card-header">
+            Core Configs - <button type="button" class="btn btn-primary btn-sm" onclick="serializecore()">Serialize All</button>
+			<button type="button" class="btn btn-secondary btn-sm" onclick="synccore()">Sync All</button>
+        </div>
+        <ul class="list-group list-group-flush">
+            @Each.Model.coreConfigs
+            <li class="list-group-item"><span>@Current.Name - </span>
+			<button type="button" class="btn btn-primary btn-sm" onclick="serializecore('@Current.Name')">Serialize</button>
+			<button type="button" class="btn btn-secondary btn-sm" onclick="synccore('@Current.Name')">Sync</button>
+			<button type="button" class="btn btn-info btn-sm" onclick="diffcore('@Current.Name')">Diff</button></li>
+            @EndEach
+        </ul>
+    </div>
+</div>
+<div class="row">
+    <div class="card col-12 p-0" style="width: 18rem;">
+        <div class="card-header">
+            Content Configs - <button type="button" class="btn btn-primary btn-sm" onclick="serializecontent()">Serialize All</button>
+			<button type="button" class="btn btn-secondary btn-sm" onclick="synccontent()">Sync All</button>
+        </div>
+        <ul class="list-group list-group-flush">
+            @Each.Model.contentConfigs
+            <li class="list-group-item"><span>@Current.Name - </span>
+			<button type="button" class="btn btn-primary btn-sm" onclick="serializecontent('@Current.Name')">Serialize</button>
+			<button type="button" class="btn btn-secondary btn-sm" onclick="synccontent('@Current.Name')">Sync</button>
+			<button type="button" class="btn btn-info btn-sm" onclick="diffcontent('@Current.Name')">Diff</button></li>
+            @EndEach
+        </ul>
+    </div>
+</div>
+
+<div class="row">
+    <div class="card col-12 p-0" style="width: 18rem;">
+        <div class="card-header">
+            Output
+        </div>
+        <pre id="output" class="pl-3">...</pre>
+		<hr />
+        <pre id="diff">&nbsp;&nbsp;&nbsp;...</pre>
+    </div>
+</div>
+
+
+<script>
+	function viewdiff(code, tempFolder, origFolder){
+		var file = $(code).text();
+	    var element = $('#diff');
+        element.empty();
+        var fullUrl = 'viewdiff?file=' + encodeURIComponent(file) +'&tempFolder=' + encodeURIComponent(tempFolder) + "&origFolder=" + encodeURIComponent(origFolder);
+        fetch(fullUrl)
+            // Retrieve its body as ReadableStream
+            .then(response => response.body)
+            .then(rs => {
+                const reader = rs.getReader();
+
+                return new ReadableStream({
+                    async start(controller) {
+                        while (true) {
+                            const { done, value } = await reader.read();
+
+                            // When no more data needs to be consumed, break the reading
+                            if (done) {
+                                break;
+                            }
+
+                            let decoder = new TextDecoder();
+                            element.append(decoder.decode(value));
+                        }
+
+                        // Close the stream
+                        controller.close();
+                        reader.releaseLock();
+                    }
+                })
+            })
+            .then(response => {
+                console.log(response);
+            })
+            .catch(console.error);
+	}
+
+	function diffcore(configName) {
+        _fetchandlog('diffcore', configName)
+    }
+	function diffcontent(configName) {
+        _fetchandlog('diffcontent', configName)
+    }
+    function serializecore(configName) {
+        _fetchandlog('serializecore', configName)
+    }
+
+    function synccore(configName) {
+        _fetchandlog('synccore', configName)
+    }
+
+    function serializecontent(configName) {
+        _fetchandlog('serializecontent', configName)
+    }
+
+    function synccontent(configName) {
+        _fetchandlog('synccontent', configName)
+    }
+
+    function _fetchandlog(url, configName) {
+        var element = $('#output');
+	    $('#diff').empty();
+        element.empty();
+        var fullUrl = [url, configName].join('/');
+        fetch(fullUrl)
+            // Retrieve its body as ReadableStream
+            .then(response => response.body)
+            .then(rs => {
+                const reader = rs.getReader();
+
+                return new ReadableStream({
+                    async start(controller) {
+                        while (true) {
+                            const { done, value } = await reader.read();
+
+                            // When no more data needs to be consumed, break the reading
+                            if (done) {
+                                break;
+                            }
+
+                            let decoder = new TextDecoder();
+                            element.append(decoder.decode(value));
+                        }
+
+                        // Close the stream
+                        controller.close();
+                        reader.releaseLock();
+                    }
+                })
+            })
+            .then(response => {
+                console.log(response);
+            })
+            .catch(console.error);
+    }
+
+</script>
+@EndSection

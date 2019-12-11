@@ -3,6 +3,7 @@ using CMS.DataEngine;
 using Mapster;
 using Nancy;
 using Nancy.Bootstrapper;
+using Nancy.Conventions;
 using Nancy.TinyIoc;
 
 namespace Bridge.Application
@@ -16,6 +17,11 @@ namespace Bridge.Application
                 .Ignore(dest => dest.AssignedSites)
                 .Ignore(dest => dest.AllowedChildTypes)
                 ;
+        }
+        protected override void ConfigureConventions(NancyConventions nancyConventions)
+        {
+            nancyConventions.StaticContentsConventions.Add(StaticContentConventionBuilder.AddDirectory("Static", @"Static"));
+            base.ConfigureConventions(nancyConventions);
         }
     }
 }

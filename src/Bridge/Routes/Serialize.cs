@@ -1,4 +1,5 @@
-﻿using Bridge.Models;
+﻿using Bridge.Application;
+using Bridge.Models;
 using CMS.DataEngine;
 using CMS.DocumentEngine;
 using CMS.SiteProvider;
@@ -22,70 +23,57 @@ namespace Bridge.Routes
         /// </summary>
         public Serialize()
         {
-            Get("/serializecore", parameters =>
+            Get("/serializecore/{id}", parameters =>
             {
                 var response = new Response();
-
                 response.ContentType = "text/plain";
                 response.Contents = stream =>
                 {
-                    var serializer = new SerializerBuilder().ConfigureDefaultValuesHandling(DefaultValuesHandling.OmitNull).Build();
-                    var watch = new Stopwatch();
-
-                    //have this driven by config
-                    var serializationPath = "/serialization/core";
-                    var pageTypes = new string[] { "cms.root", "custom.basicpage" };
-                    var fieldsToIgnore = new string[] { "ClassID" };
-                    var path = "/%";
-
-                    foreach (var pageType in pageTypes)
+                    var bridgeCoreConfigs = BridgeConfiguration.GetConfig().CoreConfigs;
+                    string configName = parameters.id;
+                    foreach (BridgeCoreConfig coreConfig in bridgeCoreConfigs)
                     {
-                        watch.Reset();
-                        watch.Start();
-                        var dci = DataClassInfoProvider.GetDataClassInfo(pageType);
-                        var mappedItem = dci.Adapt<BridgeClassInfo>();
-                        mappedItem.FieldValues = new Dictionary<string, object>();
-
-                        foreach (string columnName in dci.ColumnNames)
+                        if(configName.ToLower() == coreConfig.Name.ToLower())
                         {
-                            if (!fieldsToIgnore.Contains(columnName))
-                            {
-                                var columnValue = dci.GetValue(columnName);
-                                mappedItem.FieldValues.Add(columnName, columnValue);
-                            }
+                            _processCoreConfig(coreConfig, stream);
                         }
+                    }
+                };
 
-                        var assignedSites = new List<Guid>();
-                        foreach(SiteInfo assignedSite in dci.AssignedSites)
+                return response;
+            });
+
+            Get("/serializecore", parameters =>
+            {
+                var response = new Response();
+                response.ContentType = "text/plain";
+                response.Contents = stream =>
+                {
+                    var bridgeCoreConfigs = BridgeConfiguration.GetConfig().CoreConfigs;
+
+                    foreach (BridgeCoreConfig coreConfig in bridgeCoreConfigs)
+                    {
+                        _processCoreConfig(coreConfig, stream);
+                    }
+                };
+
+                return response;
+            });
+
+            Get("/serializecontent/{id}", parameters =>
+            {
+                var response = new Response();
+                response.ContentType = "text/plain";
+                response.Contents = stream =>
+                {
+                    var bridgeContentConfigs = BridgeConfiguration.GetConfig().ContentConfigs;
+                    string configName = parameters.id;
+                    foreach (BridgeContentConfig contentConfig in bridgeContentConfigs)
+                    {
+                        if (configName.ToLower() == contentConfig.Name.ToLower())
                         {
-                            assignedSites.Add(assignedSite.SiteGUID);
+                            _processContentConfig(contentConfig, stream);
                         }
-                        mappedItem.AssignedSites = assignedSites;
-
-
-                        var allowedChildClasses = AllowedChildClassInfoProvider.GetAllowedChildClasses().Where("ParentClassID", QueryOperator.Equals, dci["ClassID"].ToString()).Column("ChildClassID").ToList();
-
-                        var allowedChildrenTypes = new List<string>();
-                        foreach (AllowedChildClassInfo allowedChildClass in allowedChildClasses)
-                        {
-                            var className = new ObjectQuery("cms.class").Where("ClassID", QueryOperator.Equals, allowedChildClass.ChildClassID).Column("ClassName").FirstOrDefault()["ClassName"].ToString();
-                            allowedChildrenTypes.Add(className);
-                        }
-                        mappedItem.AllowedChildTypes = allowedChildrenTypes;
-
-                        var stringBuilder = new StringBuilder();
-                        var res = serializer.Serialize(mappedItem);
-                        stringBuilder.AppendLine(res);
-                        var pathToWriteTo = $"{serializationPath}/{mappedItem.ClassName.ToLower()}.yaml";
-                        var concretePath = HttpContext.Current.Server.MapPath(pathToWriteTo);
-                        FileInfo file = new FileInfo(concretePath);
-                        file.Directory.Create(); // If the directory already exists, this method does nothing.
-                        File.WriteAllText(concretePath, res);
-                        watch.Stop();
-                        byte[] bytes = Encoding.UTF8.GetBytes($"Serialized: {mappedItem.ClassName.ToLower()}.yaml - {watch.ElapsedMilliseconds}ms");
-                        stream.Write(bytes, 0, bytes.Length);
-                        stream.WriteByte(10);
-                        stream.Flush();
                     }
                 };
 
@@ -95,58 +83,127 @@ namespace Bridge.Routes
             Get("/serializecontent", parameters =>
             {
                 var response = new Response();
-               
                 response.ContentType = "text/plain";
                 response.Contents = stream =>
                 {
-                    var serializer = new SerializerBuilder().ConfigureDefaultValuesHandling(DefaultValuesHandling.OmitNull).Build();
-                    var watch = new Stopwatch();
-
-                    //have this driven by config
-                    var serializationPath = "/serialization/content";
-                    var pageTypes = new string[] { "cms.root", "custom.basicpage" };
-                    var fieldsToIgnore = new string[] { "NodeID", "NodeParentID", "DocumentNodeID", "NodeClassID", "NodeOwner" };
-                    var path = "/%";
-
-                    MultiDocumentQuery docs = DocumentHelper.GetDocuments().Path(path).Types(pageTypes).AllCultures().FilterDuplicates();
-                    var treeNodes = docs.ToList<TreeNode>();
-                    foreach (var treeNode in treeNodes)
+                    var bridgeContentConfigs = BridgeConfiguration.GetConfig().ContentConfigs;
+                    foreach (BridgeContentConfig contentConfig in bridgeContentConfigs)
                     {
-                        watch.Reset();
-                        watch.Start();
-                        var mappedItem = treeNode.Adapt<BridgeTreeNode>();
-                        mappedItem.FieldValues = new Dictionary<string, object>();
-
-                        foreach (string columnName in treeNode.ColumnNames)
-                        {
-                            if (!fieldsToIgnore.Contains(columnName))
-                            {
-                                var columnValue = treeNode.GetValue(columnName);
-                                if (columnValue != null)
-                                {
-                                    mappedItem.FieldValues.Add(columnName, columnValue);
-                                }
-                            }
-                        }
-                        mappedItem.ParentNodeGUID = treeNode?.Parent?.NodeGUID;
-                        var stringBuilder = new StringBuilder();
-                        var res = serializer.Serialize(mappedItem);
-                        stringBuilder.AppendLine(res);
-                        var pathToWriteTo = $"{serializationPath}/{mappedItem.NodeAliasPath}#{mappedItem.DocumentCulture}.yaml";
-                        var concretePath = HttpContext.Current.Server.MapPath(pathToWriteTo);
-                        FileInfo file = new FileInfo(concretePath);
-                        file.Directory.Create(); // If the directory already exists, this method does nothing.
-                        File.WriteAllText(concretePath, res);
-                        watch.Stop();
-                        byte[] bytes = Encoding.UTF8.GetBytes($"Serialized: {mappedItem.NodeAliasPath}#{mappedItem.DocumentCulture}.yaml - {watch.ElapsedMilliseconds}ms");
-                        stream.Write(bytes, 0, bytes.Length);
-                        stream.WriteByte(10);
-                        stream.Flush();
+                        _processContentConfig(contentConfig, stream);
                     }
                 };
 
                 return response;
             });
+        }
+
+        private void _processCoreConfig(BridgeCoreConfig coreConfig, Stream stream)
+        {
+            var serializer = new SerializerBuilder().ConfigureDefaultValuesHandling(DefaultValuesHandling.OmitNull).Build();
+            var watch = new Stopwatch();
+
+            //have this driven by config
+            var serializationPath = $"/core/{coreConfig.Name}";
+            var classTypes = coreConfig.GetClassTypes();
+            var fieldsToIgnore = coreConfig.GetIgnoreFields();
+
+            foreach (var classType in classTypes)
+            {
+                watch.Reset();
+                watch.Start();
+                var dci = DataClassInfoProvider.GetDataClassInfo(classType);
+                var mappedItem = dci.Adapt<BridgeClassInfo>();
+                mappedItem.FieldValues = new Dictionary<string, object>();
+
+                foreach (string columnName in dci.ColumnNames)
+                {
+                    if (!fieldsToIgnore.Contains(columnName))
+                    {
+                        var columnValue = dci.GetValue(columnName);
+                        mappedItem.FieldValues.Add(columnName, columnValue);
+                    }
+                }
+
+                var assignedSites = new List<Guid>();
+                foreach (SiteInfo assignedSite in dci.AssignedSites)
+                {
+                    assignedSites.Add(assignedSite.SiteGUID);
+                }
+                mappedItem.AssignedSites = assignedSites;
+
+
+                var allowedChildClasses = AllowedChildClassInfoProvider.GetAllowedChildClasses().Where("ParentClassID", QueryOperator.Equals, dci["ClassID"].ToString()).Column("ChildClassID").ToList();
+
+                var allowedChildrenTypes = new List<string>();
+                foreach (AllowedChildClassInfo allowedChildClass in allowedChildClasses)
+                {
+                    var className = new ObjectQuery("cms.class").Where("ClassID", QueryOperator.Equals, allowedChildClass.ChildClassID).Column("ClassName").FirstOrDefault()["ClassName"].ToString();
+                    allowedChildrenTypes.Add(className);
+                }
+                mappedItem.AllowedChildTypes = allowedChildrenTypes;
+
+                var stringBuilder = new StringBuilder();
+                var res = serializer.Serialize(mappedItem);
+                stringBuilder.AppendLine(res);
+                var pathToWriteTo = $"{serializationPath}/{mappedItem.ClassName.ToLower()}.yaml";
+                var concretePath = HttpContext.Current.Server.MapPath(pathToWriteTo);
+                FileInfo file = new FileInfo(concretePath);
+                file.Directory.Create(); // If the directory already exists, this method does nothing.
+                File.WriteAllText(concretePath, res);
+                watch.Stop();
+                byte[] bytes = Encoding.UTF8.GetBytes($"Serialized {coreConfig.Name}: {mappedItem.ClassName.ToLower()}.yaml - {watch.ElapsedMilliseconds}ms");
+                stream.Write(bytes, 0, bytes.Length);
+                stream.WriteByte(10);
+                stream.Flush();
+            }
+        }
+
+        private void _processContentConfig(BridgeContentConfig contentConfig, Stream stream)
+        {
+            var serializer = new SerializerBuilder().ConfigureDefaultValuesHandling(DefaultValuesHandling.OmitNull).Build();
+            var watch = new Stopwatch();
+
+            //have this driven by config
+            var serializationPath = $"/content/{contentConfig.Name}";
+            var pageTypes = contentConfig.GetPageTypes();
+            var fieldsToIgnore = contentConfig.GetIgnoreFields(); 
+            var path = contentConfig.Query;
+
+            MultiDocumentQuery docs = DocumentHelper.GetDocuments().Path(path).Types(pageTypes.ToArray()).AllCultures().FilterDuplicates();
+            var treeNodes = docs.ToList<TreeNode>();
+            foreach (var treeNode in treeNodes)
+            {
+                watch.Reset();
+                watch.Start();
+                var mappedItem = treeNode.Adapt<BridgeTreeNode>();
+                mappedItem.FieldValues = new Dictionary<string, object>();
+
+                foreach (string columnName in treeNode.ColumnNames)
+                {
+                    if (!fieldsToIgnore.Contains(columnName))
+                    {
+                        var columnValue = treeNode.GetValue(columnName);
+                        if (columnValue != null)
+                        {
+                            mappedItem.FieldValues.Add(columnName, columnValue);
+                        }
+                    }
+                }
+                mappedItem.ParentNodeGUID = treeNode?.Parent?.NodeGUID;
+                var stringBuilder = new StringBuilder();
+                var res = serializer.Serialize(mappedItem);
+                stringBuilder.AppendLine(res);
+                var pathToWriteTo = $"{serializationPath}/{mappedItem.NodeAliasPath}#{mappedItem.DocumentCulture}.yaml";
+                var concretePath = HttpContext.Current.Server.MapPath(pathToWriteTo);
+                FileInfo file = new FileInfo(concretePath);
+                file.Directory.Create(); // If the directory already exists, this method does nothing.
+                File.WriteAllText(concretePath, res);
+                watch.Stop();
+                byte[] bytes = Encoding.UTF8.GetBytes($"Serialized {contentConfig.Name}: {mappedItem.NodeAliasPath}#{mappedItem.DocumentCulture}.yaml ({mappedItem.NodeGUID}) - {watch.ElapsedMilliseconds}ms");
+                stream.Write(bytes, 0, bytes.Length);
+                stream.WriteByte(10);
+                stream.Flush();
+            }
         }
     }
 }
