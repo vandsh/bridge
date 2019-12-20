@@ -8,6 +8,7 @@ using DiffPlex.DiffBuilder;
 using DiffPlex.DiffBuilder.Model;
 using Mapster;
 using Nancy;
+using Nancy.Security;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -24,6 +25,8 @@ namespace Bridge.Routes
     {
         public Diff()
         {
+            this.RequiresAuthentication();
+
             Get("/diffcore/{id}", parameters =>
             {
                 var response = new Response();
@@ -126,45 +129,56 @@ namespace Bridge.Routes
             foreach (var classType in classTypes)
             {
                 var dci = DataClassInfoProvider.GetDataClassInfo(classType);
-                var mappedItem = dci.Adapt<BridgeClassInfo>();
-                mappedItem.FieldValues = new Dictionary<string, object>();
-
-                foreach (string columnName in dci.ColumnNames)
+                if(dci != null)
                 {
-                    if (!fieldsToIgnore.Contains(columnName))
+                    var mappedItem = dci.Adapt<BridgeClassInfo>();
+                    mappedItem.FieldValues = new Dictionary<string, object>();
+
+                    foreach (string columnName in dci.ColumnNames)
                     {
-                        var columnValue = dci.GetValue(columnName);
-                        mappedItem.FieldValues.Add(columnName, columnValue);
+                        if (!fieldsToIgnore.Contains(columnName))
+                        {
+                            var columnValue = dci.GetValue(columnName);
+                            mappedItem.FieldValues.Add(columnName, columnValue);
+                        }
                     }
+
+                    var assignedSites = new List<Guid>();
+                    foreach (SiteInfo assignedSite in dci.AssignedSites)
+                    {
+                        assignedSites.Add(assignedSite.SiteGUID);
+                    }
+                    mappedItem.AssignedSites = assignedSites;
+
+                    var allowedChildClasses = AllowedChildClassInfoProvider.GetAllowedChildClasses().Where("ParentClassID", QueryOperator.Equals, dci["ClassID"].ToString()).Column("ChildClassID").ToList();
+
+                    var allowedChildrenTypes = new List<string>();
+                    foreach (AllowedChildClassInfo allowedChildClass in allowedChildClasses)
+                    {
+                        var className = new ObjectQuery("cms.class").Where("ClassID", QueryOperator.Equals, allowedChildClass.ChildClassID).Column("ClassName").FirstOrDefault()["ClassName"].ToString();
+                        allowedChildrenTypes.Add(className);
+                    }
+                    mappedItem.AllowedChildTypes = allowedChildrenTypes;
+
+                    var classQueries = QueryInfoProvider.GetQueries().Where("ClassID", QueryOperator.Equals, dci.ClassID).ToList();
+                    var queries = new Dictionary<string, BridgeClassQuery>();
+                    foreach (var classQuery in classQueries)
+                    {
+                        var bcq = classQuery.Adapt<BridgeClassQuery>();
+                        queries.Add(classQuery.QueryName, bcq);
+                    }
+                    mappedItem.Queries = queries;
+
+                    var stringBuilder = new StringBuilder();
+                    var res = serializer.Serialize(mappedItem);
+                    stringBuilder.AppendLine(res);
+
+                    var pathToMatching = $"{tempSerializationPath}/{mappedItem.ClassName.ToLower()}.yaml";
+                    var tempPath = HttpContext.Current.Server.MapPath(pathToMatching);
+                    FileInfo file = new FileInfo(tempPath);
+                    file.Directory.Create(); // If the directory already exists, this method does nothing.
+                    File.WriteAllText(tempPath, res);
                 }
-
-                var assignedSites = new List<Guid>();
-                foreach (SiteInfo assignedSite in dci.AssignedSites)
-                {
-                    assignedSites.Add(assignedSite.SiteGUID);
-                }
-                mappedItem.AssignedSites = assignedSites;
-
-
-                var allowedChildClasses = AllowedChildClassInfoProvider.GetAllowedChildClasses().Where("ParentClassID", QueryOperator.Equals, dci["ClassID"].ToString()).Column("ChildClassID").ToList();
-
-                var allowedChildrenTypes = new List<string>();
-                foreach (AllowedChildClassInfo allowedChildClass in allowedChildClasses)
-                {
-                    var className = new ObjectQuery("cms.class").Where("ClassID", QueryOperator.Equals, allowedChildClass.ChildClassID).Column("ClassName").FirstOrDefault()["ClassName"].ToString();
-                    allowedChildrenTypes.Add(className);
-                }
-                mappedItem.AllowedChildTypes = allowedChildrenTypes;
-
-                var stringBuilder = new StringBuilder();
-                var res = serializer.Serialize(mappedItem);
-                stringBuilder.AppendLine(res);
-
-                var pathToMatching = $"{tempSerializationPath}/{mappedItem.ClassName.ToLower()}.yaml";
-                var tempPath = HttpContext.Current.Server.MapPath(pathToMatching);
-                FileInfo file = new FileInfo(tempPath);
-                file.Directory.Create(); // If the directory already exists, this method does nothing.
-                File.WriteAllText(tempPath, res);
             }
             watch.Stop();
             _outputToStream(stream, $"Generating temp {coreConfig.Name} - {watch.ElapsedMilliseconds}ms");
@@ -186,6 +200,7 @@ namespace Bridge.Routes
             var fieldsToIgnore = contentConfig.GetIgnoreFields();
             var path = contentConfig.Query;
 
+            //TODO: Query to see if page types exist, if DOESNT, display that...
             MultiDocumentQuery docs = DocumentHelper.GetDocuments().Path(path).Types(pageTypes.ToArray()).AllCultures().FilterDuplicates();
             var treeNodes = docs.ToList<TreeNode>();
             foreach (var treeNode in treeNodes)
@@ -249,9 +264,9 @@ namespace Bridge.Routes
             watch.Reset();
             watch.Start();
             var concretePath = HttpContext.Current.Server.MapPath(serializationPath);
-            var origYamlFiles = Directory.EnumerateFiles(concretePath, "*.yaml", SearchOption.AllDirectories);
+            var origYamlFiles = (Directory.Exists(concretePath))? Directory.EnumerateFiles(concretePath, "*.yaml", SearchOption.AllDirectories) : new List<string>();
             var tempDiffPath = HttpContext.Current.Server.MapPath(tempSerializationPath);
-            var tempYamlFiles = Directory.EnumerateFiles(tempDiffPath, "*.yaml", SearchOption.AllDirectories);
+            var tempYamlFiles = (Directory.Exists(tempDiffPath)) ? Directory.EnumerateFiles(tempDiffPath, "*.yaml", SearchOption.AllDirectories) : new List<string>();
             var origYamlHash = new Dictionary<string, string>();
             var tempYamlHash = new Dictionary<string, string>();
             foreach (string origYamlFile in origYamlFiles)

@@ -5,6 +5,7 @@ using CMS.DocumentEngine;
 using CMS.SiteProvider;
 using Mapster;
 using Nancy;
+using Nancy.Security;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -23,6 +24,7 @@ namespace Bridge.Routes
         /// </summary>
         public Serialize()
         {
+            this.RequiresAuthentication();
             Get("/serializecore/{id}", parameters =>
             {
                 var response = new Response();
@@ -37,6 +39,10 @@ namespace Bridge.Routes
                         {
                             _processCoreConfig(coreConfig, stream);
                         }
+                        byte[] bytes = Encoding.UTF8.GetBytes($"Completed serialize!");
+                        stream.Write(bytes, 0, bytes.Length);
+                        stream.WriteByte(10);
+                        stream.Flush();
                     }
                 };
 
@@ -55,6 +61,10 @@ namespace Bridge.Routes
                     {
                         _processCoreConfig(coreConfig, stream);
                     }
+                    byte[] bytes = Encoding.UTF8.GetBytes($"Completed serialize!");
+                    stream.Write(bytes, 0, bytes.Length);
+                    stream.WriteByte(10);
+                    stream.Flush();
                 };
 
                 return response;
@@ -74,6 +84,10 @@ namespace Bridge.Routes
                         {
                             _processContentConfig(contentConfig, stream);
                         }
+                        byte[] bytes = Encoding.UTF8.GetBytes($"Completed serialize!");
+                        stream.Write(bytes, 0, bytes.Length);
+                        stream.WriteByte(10);
+                        stream.Flush();
                     }
                 };
 
@@ -91,6 +105,10 @@ namespace Bridge.Routes
                     {
                         _processContentConfig(contentConfig, stream);
                     }
+                    byte[] bytes = Encoding.UTF8.GetBytes($"Completed serialize!");
+                    stream.Write(bytes, 0, bytes.Length);
+                    stream.WriteByte(10);
+                    stream.Flush();
                 };
 
                 return response;
@@ -112,49 +130,60 @@ namespace Bridge.Routes
                 watch.Reset();
                 watch.Start();
                 var dci = DataClassInfoProvider.GetDataClassInfo(classType);
-                var mappedItem = dci.Adapt<BridgeClassInfo>();
-                mappedItem.FieldValues = new Dictionary<string, object>();
-
-                foreach (string columnName in dci.ColumnNames)
+                if (dci != null)
                 {
-                    if (!fieldsToIgnore.Contains(columnName))
+                    var mappedItem = dci.Adapt<BridgeClassInfo>();
+                    mappedItem.FieldValues = new Dictionary<string, object>();
+
+                    foreach (string columnName in dci.ColumnNames)
                     {
-                        var columnValue = dci.GetValue(columnName);
-                        mappedItem.FieldValues.Add(columnName, columnValue);
+                        if (!fieldsToIgnore.Contains(columnName))
+                        {
+                            var columnValue = dci.GetValue(columnName);
+                            mappedItem.FieldValues.Add(columnName, columnValue);
+                        }
                     }
+
+                    var assignedSites = new List<Guid>();
+                    foreach (SiteInfo assignedSite in dci.AssignedSites)
+                    {
+                        assignedSites.Add(assignedSite.SiteGUID);
+                    }
+                    mappedItem.AssignedSites = assignedSites;
+
+
+                    var allowedChildClasses = AllowedChildClassInfoProvider.GetAllowedChildClasses().Where("ParentClassID", QueryOperator.Equals, dci["ClassID"].ToString()).Column("ChildClassID").ToList();
+                    var allowedChildrenTypes = new List<string>();
+                    foreach (AllowedChildClassInfo allowedChildClass in allowedChildClasses)
+                    {
+                        var className = new ObjectQuery("cms.class").Where("ClassID", QueryOperator.Equals, allowedChildClass.ChildClassID).Column("ClassName").FirstOrDefault()["ClassName"].ToString();
+                        allowedChildrenTypes.Add(className);
+                    }
+                    mappedItem.AllowedChildTypes = allowedChildrenTypes;
+
+                    var classQueries = QueryInfoProvider.GetQueries().Where("ClassID", QueryOperator.Equals, dci.ClassID).ToList();
+                    var queries = new Dictionary<string, BridgeClassQuery>();
+                    foreach (var classQuery in classQueries)
+                    {
+                        var bcq = classQuery.Adapt<BridgeClassQuery>();
+                        queries.Add(classQuery.QueryName, bcq);
+                    }
+                    mappedItem.Queries = queries;
+
+                    var stringBuilder = new StringBuilder();
+                    var res = serializer.Serialize(mappedItem);
+                    stringBuilder.AppendLine(res);
+                    var pathToWriteTo = $"{serializationPath}/{mappedItem.ClassName.ToLower()}.yaml";
+                    var concretePath = HttpContext.Current.Server.MapPath(pathToWriteTo);
+                    FileInfo file = new FileInfo(concretePath);
+                    file.Directory.Create(); // If the directory already exists, this method does nothing.
+                    File.WriteAllText(concretePath, res);
+                    watch.Stop();
+                    byte[] bytes = Encoding.UTF8.GetBytes($"Serialized {coreConfig.Name}: {mappedItem.ClassName.ToLower()}.yaml - {watch.ElapsedMilliseconds}ms");
+                    stream.Write(bytes, 0, bytes.Length);
+                    stream.WriteByte(10);
+                    stream.Flush();
                 }
-
-                var assignedSites = new List<Guid>();
-                foreach (SiteInfo assignedSite in dci.AssignedSites)
-                {
-                    assignedSites.Add(assignedSite.SiteGUID);
-                }
-                mappedItem.AssignedSites = assignedSites;
-
-
-                var allowedChildClasses = AllowedChildClassInfoProvider.GetAllowedChildClasses().Where("ParentClassID", QueryOperator.Equals, dci["ClassID"].ToString()).Column("ChildClassID").ToList();
-
-                var allowedChildrenTypes = new List<string>();
-                foreach (AllowedChildClassInfo allowedChildClass in allowedChildClasses)
-                {
-                    var className = new ObjectQuery("cms.class").Where("ClassID", QueryOperator.Equals, allowedChildClass.ChildClassID).Column("ClassName").FirstOrDefault()["ClassName"].ToString();
-                    allowedChildrenTypes.Add(className);
-                }
-                mappedItem.AllowedChildTypes = allowedChildrenTypes;
-
-                var stringBuilder = new StringBuilder();
-                var res = serializer.Serialize(mappedItem);
-                stringBuilder.AppendLine(res);
-                var pathToWriteTo = $"{serializationPath}/{mappedItem.ClassName.ToLower()}.yaml";
-                var concretePath = HttpContext.Current.Server.MapPath(pathToWriteTo);
-                FileInfo file = new FileInfo(concretePath);
-                file.Directory.Create(); // If the directory already exists, this method does nothing.
-                File.WriteAllText(concretePath, res);
-                watch.Stop();
-                byte[] bytes = Encoding.UTF8.GetBytes($"Serialized {coreConfig.Name}: {mappedItem.ClassName.ToLower()}.yaml - {watch.ElapsedMilliseconds}ms");
-                stream.Write(bytes, 0, bytes.Length);
-                stream.WriteByte(10);
-                stream.Flush();
             }
         }
 

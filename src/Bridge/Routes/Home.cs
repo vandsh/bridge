@@ -1,5 +1,6 @@
 ﻿using Bridge.Application;
 using Nancy;
+using Nancy.Security;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -11,6 +12,7 @@ namespace Bridge.Routes
     {
         public Home()
         {
+            this.RequiresAuthentication();
             Get("/", parameters => {
                 var bridgeCoreConfigs = BridgeConfiguration.GetConfig().CoreConfigs;
                 var bridgeContentConfigs = BridgeConfiguration.GetConfig().ContentConfigs;

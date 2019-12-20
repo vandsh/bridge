@@ -389,6 +389,9 @@
     <Reference Include="Nancy, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Nancy.2.0.0\lib\net452\Nancy.dll</HintPath>
     </Reference>
+    <Reference Include="Nancy.Authentication.Basic, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Nancy.Authentication.Basic.2.0.0\lib\net452\Nancy.Authentication.Basic.dll</HintPath>
+    </Reference>
     <Reference Include="Nancy.Hosting.Aspnet, Version=2.0.0.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Nancy.Hosting.Aspnet.2.0.0\lib\net452\Nancy.Hosting.Aspnet.dll</HintPath>
     </Reference>
@@ -488,6 +491,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Application\BridgeConfig.cs" />
+    <Compile Include="Application\BridgeUserValidator.cs" />
     <Compile Include="Application\CustomBootstrapper.cs" />
     <Compile Include="Models\BridgeClassInfo.cs" />
     <Compile Include="Models\BridgeTreeNode.cs" />

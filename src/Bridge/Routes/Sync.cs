@@ -12,6 +12,7 @@ using CMS.SiteProvider;
 using System.Linq;
 using System.Collections.Generic;
 using Bridge.Application;
+using Nancy.Security;
 
 namespace Bridge.Routes
 {
@@ -22,6 +23,7 @@ namespace Bridge.Routes
         /// </summary>
         public Sync()
         {
+            this.RequiresAuthentication();
             Get("/synccore/{id}", parameters =>
             {
                 var response = new Response();
@@ -37,6 +39,10 @@ namespace Bridge.Routes
                         {
                             _processCoreConfig(coreConfig, stream);
                         }
+                        byte[] bytes = Encoding.UTF8.GetBytes($"Completed sync!");
+                        stream.Write(bytes, 0, bytes.Length);
+                        stream.WriteByte(10);
+                        stream.Flush();
                     }
                 };
                 return response;
@@ -54,7 +60,11 @@ namespace Bridge.Routes
                     {
                         _processCoreConfig(coreConfig, stream);
                     }
-                    
+                    byte[] bytes = Encoding.UTF8.GetBytes($"Completed sync!");
+                    stream.Write(bytes, 0, bytes.Length);
+                    stream.WriteByte(10);
+                    stream.Flush();
+
                 };
                 return response;
             });
@@ -74,6 +84,10 @@ namespace Bridge.Routes
                         {
                             _processContentConfing(contentConfig, stream);
                         }
+                        byte[] bytes = Encoding.UTF8.GetBytes($"Completed sync!");
+                        stream.Write(bytes, 0, bytes.Length);
+                        stream.WriteByte(10);
+                        stream.Flush();
                     }
                 };
                 return response;
@@ -82,7 +96,7 @@ namespace Bridge.Routes
             Get("/synccontent", parameters =>
             {
                 var response = new Response();
-               
+
                 response.ContentType = "text/plain";
                 response.Contents = stream =>
                 {
@@ -91,6 +105,10 @@ namespace Bridge.Routes
                     {
                         _processContentConfing(contentConfig, stream);
                     }
+                    byte[] bytes = Encoding.UTF8.GetBytes($"Completed sync!");
+                    stream.Write(bytes, 0, bytes.Length);
+                    stream.WriteByte(10);
+                    stream.Flush();
                 };
                 return response;
             });
@@ -106,10 +124,23 @@ namespace Bridge.Routes
             var serializationPath = $"/core/{coreConfig.Name}";
             var classTypes = coreConfig.GetClassTypes();
             var ignoreFields = coreConfig.GetIgnoreFields();
+            var allAllowedChildInfos = new List<AllowedChildClassInfo>();
 
+
+            int retryCount = 3;
+            _processClasses(retryCount, allAllowedChildInfos, coreConfig.Name, stream, deserializer, watch, serializationPath, classTypes, ignoreFields);
+            //at this point we should have all children, lets post process these
+            foreach (var allowedChildClass in allAllowedChildInfos)
+            {
+                AllowedChildClassInfoProvider.SetAllowedChildClassInfo(allowedChildClass);
+            }
+        }
+
+        private void _processClasses(int retryCount, List<AllowedChildClassInfo> allAllowedChildInfos, string coreConfigName, Stream stream, IDeserializer deserializer, Stopwatch watch, string serializationPath, IEnumerable<string> classTypes, IEnumerable<string> ignoreFields)
+        {
+            var retryClasses = new List<string>();
             var concretePath = HttpContext.Current.Server.MapPath(serializationPath);
             var yamlFiles = Directory.EnumerateFiles(concretePath, "*.yaml", SearchOption.AllDirectories);
-            var allAllowedChildInfos = new List<AllowedChildClassInfo>();
             foreach (string yamlFile in yamlFiles)
             {
                 watch.Reset();
@@ -131,34 +162,60 @@ namespace Bridge.Routes
                         }
                     }
 
+                    DataClassInfoProvider.SetDataClassInfo(newDCI);
+                    foreach (var allowedType in bridgeClassInfo.AllowedChildTypes)
+                    {
+                        var matchingClass = new ObjectQuery("cms.class", false).Where("ClassName", QueryOperator.Equals, allowedType)?.Column("ClassID")?.FirstOrDefault();
+                        if (matchingClass != null)
+                        {
+                            matchingClass["ClassID"]?.ToString();
+
+                            var acci = new AllowedChildClassInfo() { ChildClassID = int.Parse(matchingClass["ClassID"]?.ToString()), ParentClassID = newDCI.ClassID };
+                            allAllowedChildInfos.Add(acci);
+                        }
+                        else
+                        {
+                            retryClasses.Add(allowedType);
+                        }
+                    }
+
                     foreach (var siteGUID in bridgeClassInfo.AssignedSites)
                     {
                         var site = SiteInfoProvider.GetSiteInfoByGUID(siteGUID);
-                        newDCI.AssignedSites.Add(site);
+                        ClassSiteInfoProvider.AddClassToSite(newDCI.ClassID, site.SiteID);
                     }
 
-                    DataClassInfoProvider.SetDataClassInfo(newDCI);
-
-
-                    foreach (var allowedType in bridgeClassInfo.AllowedChildTypes)
+                    var queries = new Dictionary<string, BridgeClassQuery>();
+                    foreach (var bcq in bridgeClassInfo.Queries)
                     {
-                        var classID = new ObjectQuery("cms.class", false).Where("ClassName", QueryOperator.Equals, allowedType).Column("ClassID").FirstOrDefault()["ClassID"].ToString();
-                        var acci = new AllowedChildClassInfo() { ChildClassID = int.Parse(classID), ParentClassID = newDCI.ClassID };
-                        allAllowedChildInfos.Add(acci);
+                        var qi = QueryInfoProvider.GetQueries().Where("QueryGUID", QueryOperator.Equals, bcq.Value.QueryGUID).FirstOrDefault();
+                        if (qi == null)
+                        {
+                            qi = new QueryInfo();
+                        }
+                        qi.ClassID = newDCI.ClassID;
+                        qi.QueryName = bcq.Key;
+                        qi.QueryTypeID = bcq.Value.QueryTypeID;
+                        qi.QueryText = bcq.Value.QueryText;
+                        qi.QueryIsLocked = bcq.Value.QueryIsLocked;
+                        qi.QueryIsCustom = bcq.Value.QueryIsCustom;
+                        qi.QueryRequiresTransaction = bcq.Value.QueryRequiresTransaction;
+                        qi.QueryConnectionString = bcq.Value.QueryConnectionString;
+                        qi.QueryGUID = bcq.Value.QueryGUID;
+                        QueryInfoProvider.SetQueryInfo(qi);
                     }
 
-                    byte[] bytes = Encoding.UTF8.GetBytes($"Synced {coreConfig.Name}: {yamlFile.Replace(concretePath, "")} - {watch.ElapsedMilliseconds}ms");
+                    byte[] bytes = Encoding.UTF8.GetBytes($"Synced {coreConfigName}: {yamlFile.Replace(concretePath, "")} - {watch.ElapsedMilliseconds}ms");
                     stream.Write(bytes, 0, bytes.Length);
                     stream.WriteByte(10);
                     stream.Flush();
                 }
                 watch.Stop();
-
             }
-            //at this point we should have all children, lets post process these
-            foreach (var allowedChildClass in allAllowedChildInfos)
+            retryCount--;
+            if(retryCount > 0 && retryClasses.Count > 0)
             {
-                AllowedChildClassInfoProvider.SetAllowedChildClassInfo(allowedChildClass);
+                _processClasses(retryCount, allAllowedChildInfos, coreConfigName, stream, deserializer, watch, serializationPath, retryClasses, ignoreFields);
             }
         }
 

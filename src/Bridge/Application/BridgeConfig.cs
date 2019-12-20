@@ -24,6 +24,15 @@ namespace Bridge.Application
         private const string CoreConfigsCollectionName = "CoreConfigs";
         private const string ContentConfigsCollectionName = "ContentConfigs";
 
+        [ConfigurationProperty("defaultsite", IsRequired = true)]
+        public string DefaultSite
+        {
+            get
+            {
+                return this["defaultsite"] as string;
+            }
+        }
+
         [ConfigurationProperty(CoreConfigsCollectionName)]
         [ConfigurationCollection(typeof(BridgeCoreConfigs), AddItemName = "add")]
         public BridgeCoreConfigs CoreConfigs { get { return (BridgeCoreConfigs)base[CoreConfigsCollectionName]; } }
