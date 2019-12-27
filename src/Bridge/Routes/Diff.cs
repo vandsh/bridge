@@ -126,10 +126,11 @@ namespace Bridge.Routes
             var classTypes = coreConfig.GetClassTypes();
             var fieldsToIgnore = coreConfig.GetIgnoreFields();
 
+            ProviderHelper.ClearHashtables("cms.class", false);
             foreach (var classType in classTypes)
             {
                 var dci = DataClassInfoProvider.GetDataClassInfo(classType);
-                if(dci != null)
+                if (dci != null)
                 {
                     var mappedItem = dci.Adapt<BridgeClassInfo>();
                     mappedItem.FieldValues = new Dictionary<string, object>();

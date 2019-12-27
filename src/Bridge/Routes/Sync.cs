@@ -13,6 +13,8 @@ using System.Linq;
 using System.Collections.Generic;
 using Bridge.Application;
 using Nancy.Security;
+using CMS.Helpers;
+using CMS.Automation;
 
 namespace Bridge.Routes
 {
@@ -39,6 +41,7 @@ namespace Bridge.Routes
                         {
                             _processCoreConfig(coreConfig, stream);
                         }
+                        ProviderHelper.ClearHashtables("cms.class", false);
                         byte[] bytes = Encoding.UTF8.GetBytes($"Completed sync!");
                         stream.Write(bytes, 0, bytes.Length);
                         stream.WriteByte(10);
@@ -60,6 +63,7 @@ namespace Bridge.Routes
                     {
                         _processCoreConfig(coreConfig, stream);
                     }
+                    ProviderHelper.ClearHashtables("cms.class", false);
                     byte[] bytes = Encoding.UTF8.GetBytes($"Completed sync!");
                     stream.Write(bytes, 0, bytes.Length);
                     stream.WriteByte(10);
@@ -161,7 +165,6 @@ namespace Bridge.Routes
                             newDCI[field.Key] = field.Value;
                         }
                     }
-
                     DataClassInfoProvider.SetDataClassInfo(newDCI);
                     foreach (var allowedType in bridgeClassInfo.AllowedChildTypes)
                     {
@@ -185,7 +188,6 @@ namespace Bridge.Routes
                         ClassSiteInfoProvider.AddClassToSite(newDCI.ClassID, site.SiteID);
                     }
 
-                    var queries = new Dictionary<string, BridgeClassQuery>();
                     foreach (var bcq in bridgeClassInfo.Queries)
                     {
                         var qi = QueryInfoProvider.GetQueries().Where("QueryGUID", QueryOperator.Equals, bcq.Value.QueryGUID).FirstOrDefault();
@@ -204,7 +206,6 @@ namespace Bridge.Routes
                         qi.QueryGUID = bcq.Value.QueryGUID;
                         QueryInfoProvider.SetQueryInfo(qi);
                     }
-
                     byte[] bytes = Encoding.UTF8.GetBytes($"Synced {coreConfigName}: {yamlFile.Replace(concretePath, "")} - {watch.ElapsedMilliseconds}ms");
                     stream.Write(bytes, 0, bytes.Length);
                     stream.WriteByte(10);
@@ -264,7 +265,10 @@ namespace Bridge.Routes
                             {
                                 foreach (var fieldValue in bridgeTreeNode.FieldValues)
                                 {
-                                    nonSpecificCultureTreeNode.SetValue(fieldValue.Key, fieldValue.Value);
+                                    if (!ignoreFields.Contains(fieldValue.Key))
+                                    {
+                                        nonSpecificCultureTreeNode.SetValue(fieldValue.Key, fieldValue.Value);
+                                    }
                                 }
                             }
                             nonSpecificCultureTreeNode.InsertAsNewCultureVersion(bridgeTreeNode.DocumentCulture);
@@ -278,7 +282,10 @@ namespace Bridge.Routes
                             {
                                 foreach (var fieldValue in bridgeTreeNode.FieldValues)
                                 {
-                                    newTreeNode.SetValue(fieldValue.Key, fieldValue.Value);
+                                    if (!ignoreFields.Contains(fieldValue.Key))
+                                    {
+                                        newTreeNode.SetValue(fieldValue.Key, fieldValue.Value);
+                                    }
                                 }
                             }
                             newTreeNode.Insert(parentTreeNode);

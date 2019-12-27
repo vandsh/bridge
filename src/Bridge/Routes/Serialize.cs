@@ -125,6 +125,7 @@ namespace Bridge.Routes
             var classTypes = coreConfig.GetClassTypes();
             var fieldsToIgnore = coreConfig.GetIgnoreFields();
 
+            ProviderHelper.ClearHashtables("cms.class", false);
             foreach (var classType in classTypes)
             {
                 watch.Reset();

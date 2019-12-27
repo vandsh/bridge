@@ -3,3 +3,6 @@ App_Data/
 bin/
 obj/
 packages/
+/src/Bridge/content/
+/src/Bridge/core/
+/src/Bridge/temp/
