@@ -17,7 +17,7 @@ using YamlDotNet.Serialization;
 
 namespace Bridge.Routes
 {
-    public class Serialize : NancyModule
+    public class Serialize : BridgeModule
     {
         /// <summary>
         /// Take whats in the database and serialize it
@@ -119,9 +119,9 @@ namespace Bridge.Routes
         {
             var serializer = new SerializerBuilder().ConfigureDefaultValuesHandling(DefaultValuesHandling.OmitNull).Build();
             var watch = new Stopwatch();
-
+            string serializationFolder = BridgeConfiguration.GetConfig().SerializationFolder;
             //have this driven by config
-            var serializationPath = $"/core/{coreConfig.Name}";
+            var serializationPath = $"{serializationFolder}/core/{coreConfig.Name}";
             var classTypes = coreConfig.GetClassTypes();
             var fieldsToIgnore = coreConfig.GetIgnoreFields();
 
@@ -192,9 +192,10 @@ namespace Bridge.Routes
         {
             var serializer = new SerializerBuilder().ConfigureDefaultValuesHandling(DefaultValuesHandling.OmitNull).Build();
             var watch = new Stopwatch();
+            string serializationFolder = BridgeConfiguration.GetConfig().SerializationFolder;
 
             //have this driven by config
-            var serializationPath = $"/content/{contentConfig.Name}";
+            var serializationPath = $"{serializationFolder}/content/{contentConfig.Name}";
             var pageTypes = contentConfig.GetPageTypes();
             var fieldsToIgnore = contentConfig.GetIgnoreFields(); 
             var path = contentConfig.Query;

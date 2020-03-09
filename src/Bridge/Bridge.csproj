@@ -491,6 +491,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Application\BridgeConfig.cs" />
+    <Compile Include="Application\BridgeModule.cs" />
     <Compile Include="Application\BridgeUserValidator.cs" />
     <Compile Include="Application\CustomBootstrapper.cs" />
     <Compile Include="Models\BridgeClassInfo.cs" />
@@ -504,6 +505,7 @@
   <ItemGroup>
     <None Include="packages.config" />
     <Content Include="Views\Index.html" />
+    <Content Include="web.config.install.xdt" />
     <None Include="Web.Debug.config">
       <DependentUpon>Web.config</DependentUpon>
     </None>

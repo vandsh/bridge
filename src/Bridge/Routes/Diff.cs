@@ -21,7 +21,7 @@ using YamlDotNet.Serialization;
 
 namespace Bridge.Routes
 {
-    public class Diff : NancyModule
+    public class Diff : BridgeModule
     {
         public Diff()
         {
@@ -116,13 +116,14 @@ namespace Bridge.Routes
         private void _processCoreConfig(BridgeCoreConfig coreConfig, Stream stream)
         {
             var serializer = new SerializerBuilder().ConfigureDefaultValuesHandling(DefaultValuesHandling.OmitNull).Build();
+            string serializationFolder = BridgeConfiguration.GetConfig().SerializationFolder;
             var watch = new Stopwatch();
             _clearTempFolder();
             watch.Start();
             //have this driven by config
-            var serializationPath = $"/core/{coreConfig.Name}";
+            var serializationPath = $"{serializationFolder}/core/{coreConfig.Name}";
             var tempGUID = DateTime.Now.Ticks.ToString();
-            var tempSerializationPath = $"/temp/{tempGUID}/{coreConfig.Name}";
+            var tempSerializationPath = $"{serializationFolder}/temp/{tempGUID}/{coreConfig.Name}";
             var classTypes = coreConfig.GetClassTypes();
             var fieldsToIgnore = coreConfig.GetIgnoreFields();
 
@@ -190,13 +191,14 @@ namespace Bridge.Routes
         {
             var serializer = new SerializerBuilder().ConfigureDefaultValuesHandling(DefaultValuesHandling.OmitNull).Build();
             var watch = new Stopwatch();
+            string serializationFolder = BridgeConfiguration.GetConfig().SerializationFolder;
             _clearTempFolder();
             watch.Start();
 
             //have this driven by config
-            var serializationPath = $"/content/{contentConfig.Name}";
+            var serializationPath = $"{serializationFolder}/content/{contentConfig.Name}";
             var tempGUID = DateTime.Now.Ticks.ToString();
-            var tempSerializationPath = $"/temp/{tempGUID}/{contentConfig.Name}";
+            var tempSerializationPath = $"{serializationFolder}/temp/{tempGUID}/{contentConfig.Name}";
             var pageTypes = contentConfig.GetPageTypes();
             var fieldsToIgnore = contentConfig.GetIgnoreFields();
             var path = contentConfig.Query;
@@ -243,7 +245,8 @@ namespace Bridge.Routes
             try
             {
                 //just trying to clean up some temp stuff from prev diffs
-                var tempRoot = HttpContext.Current.Server.MapPath("/temp");
+                string serializationFolder = BridgeConfiguration.GetConfig().SerializationFolder;
+                var tempRoot = HttpContext.Current.Server.MapPath($"{serializationFolder}/temp");
                 DirectoryInfo di = new DirectoryInfo(tempRoot);
                 foreach (FileInfo file in di.EnumerateFiles())
                 {

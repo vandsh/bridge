@@ -33,6 +33,15 @@ namespace Bridge.Application
             }
         }
 
+        [ConfigurationProperty("serializationfolder", IsRequired = true)]
+        public string SerializationFolder
+        {
+            get
+            {
+                return this["serializationfolder"] as string;
+            }
+        }
+
         [ConfigurationProperty(CoreConfigsCollectionName)]
         [ConfigurationCollection(typeof(BridgeCoreConfigs), AddItemName = "add")]
         public BridgeCoreConfigs CoreConfigs { get { return (BridgeCoreConfigs)base[CoreConfigsCollectionName]; } }

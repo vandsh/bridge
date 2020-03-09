@@ -18,7 +18,7 @@ using CMS.Automation;
 
 namespace Bridge.Routes
 {
-    public class Sync : NancyModule
+    public class Sync : BridgeModule
     {
         /// <summary>
         /// Deserialize what is on disk and save back to the Database
@@ -120,12 +120,13 @@ namespace Bridge.Routes
 
         private void _processCoreConfig(BridgeCoreConfig coreConfig, Stream stream)
         {
+            string serializationFolder = BridgeConfiguration.GetConfig().SerializationFolder;
             var deserializer = new DeserializerBuilder().Build();
             TreeProvider tree = new TreeProvider(MembershipContext.AuthenticatedUser);
             var watch = new Stopwatch();
 
             //have this driven by config
-            var serializationPath = $"/core/{coreConfig.Name}";
+            var serializationPath = $"{serializationFolder}/core/{coreConfig.Name}";
             var classTypes = coreConfig.GetClassTypes();
             var ignoreFields = coreConfig.GetIgnoreFields();
             var allAllowedChildInfos = new List<AllowedChildClassInfo>();
@@ -222,11 +223,12 @@ namespace Bridge.Routes
 
         private void _processContentConfing(BridgeContentConfig contentConfig, Stream stream)
         {
+            string serializationFolder = BridgeConfiguration.GetConfig().SerializationFolder;
             var deserializer = new DeserializerBuilder().Build();
             TreeProvider tree = new TreeProvider(MembershipContext.AuthenticatedUser);
             var watch = new Stopwatch();
 
-            var serializationPath = $"/content/{contentConfig.Name}";
+            var serializationPath = $"{serializationFolder}/content/{contentConfig.Name}";
             var pageTypes = contentConfig.GetPageTypes();
             var ignoreFields = contentConfig.GetIgnoreFields();
 

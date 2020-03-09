@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<configuration xmlns:xdt="http://schemas.microsoft.com/XML-Document-Transform">
+  <configSections xdt:Transform="Insert">
+    <section name="BridgeConfigSection" type="Bridge.Application.BridgeConfigSection, Bridge" />
+  </configSections>
+
+  <BridgeConfigSection defaultsite="BridgeCIYaml" serializationfolder="~/serialization" xdt:Transform="Insert">
+    <CoreConfigs>
+      <!-- break these configurations down to a module/feature level to allow you to sync at a good logical granularity-->
+      <!--<add name="Example" classtypes="custom.basicpage" ignorefields="ClassID,ClassLastModified,ClassVersionGUID" />-->
+      <add name="BaseClassTypes" classtypes="custom.basicpage" ignorefields="ClassID,ClassLastModified,ClassVersionGUID" />
+    </CoreConfigs>
+    <ContentConfigs>
+      <!-- leverage the `query` attribute to help drive the location you are syncing along with the page types -->
+      <!--<add name="Example" pagetypes="custom.basicpage" ignorefields="DocumentModifiedWhen,NodeOriginalNodeID,NodeID,NodeParentID,DocumentNodeID,NodeClassID,NodeOwner,DocumentID,NodeSKUID,DocumentCheckedOutVersionHistoryID" query="/%" />-->
+      <add name="BaseContent" pagetypes="custom.basicpage" ignorefields="DocumentModifiedWhen,NodeOriginalNodeID,NodeID,NodeParentID,DocumentNodeID,NodeClassID,NodeOwner,DocumentID,NodeSKUID,DocumentCheckedOutVersionHistoryID" query="/%" />
+    </ContentConfigs>
+  </BridgeConfigSection>
+  <appSettings xdt:Transform="Insert">
+    <add key="BridgeBaseUrl" value="/bridge"/>
+  </appSettings>
+</configuration>

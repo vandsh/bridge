@@ -6,3 +6,4 @@ packages/
 /src/Bridge/content/
 /src/Bridge/core/
 /src/Bridge/temp/
+/src/Bridge/serialization/
