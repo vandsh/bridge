@@ -38,6 +38,6 @@
          - `<your url>/bridge/serializecore?/{configName}`: serializes the specified core config (or all if none specified) to the filesystem
          - `<your url>/bridge/serializecontent?/{configName}`: serializes the specified content config (or all if none specified) to the filesystem
          - `<your url>/bridge/synccore?/{configName}`: syncs the specified core config (or all if none specified) to the database
-         - `<your url>/bridge/synccontent?/{configName}`: syncs the specified core config (or all if none specified) to the database
+         - `<your url>/bridge/synccontent?/{configName}`: syncs the specified content config (or all if none specified) to the database
      - *My ultimate goal is to leverage the endpoints in order to promote a continuous integration and deployment methodology within the Kentico community*
 
