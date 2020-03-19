@@ -86,7 +86,7 @@ namespace Bridge.Routes
 
                     var diffBuilder = new InlineDiffBuilder(new Differ());
                     var diff = diffBuilder.BuildDiffModel(origYamlFileContents, tempFileContents);
-
+                    
                     foreach (var line in diff.Lines)
                     {
                         string linePrefix = "";
@@ -94,11 +94,11 @@ namespace Bridge.Routes
                         switch (line.Type)
                         {
                             case ChangeType.Inserted:
-                                linePrefix = "+ <strong>";
+                                linePrefix = "K <strong>";
                                 lineSuffix = "</strong>";
                                 break;
                             case ChangeType.Deleted:
-                                linePrefix = "- <em>";
+                                linePrefix = "F <em>";
                                 lineSuffix = "</em>";
                                 break;
                             default:
@@ -310,7 +310,7 @@ namespace Bridge.Routes
             var keyMatchHashDifference = tempYamlHash.Where(entry => origYamlHash.ContainsKey(entry.Key) && (origYamlHash[entry.Key] != entry.Value)).Select(x => x.Key);
             foreach (var diff in keyMatchHashDifference)
             {
-                _outputToStream(stream, $"Difference found: <code onclick='viewdiff(this,\"{serializationPath}\", \"{tempSerializationPath}\")'>{diff}</code>");
+                _outputToStream(stream, $"Difference found: <code onclick='viewdiff(this, \"{tempSerializationPath}\", \"{serializationPath}\")'>{diff}</code>");
             }
             if (!missingInTemp.Any() && !missingInOrig.Any() && !keyMatchHashDifference.Any())
             {

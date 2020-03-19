@@ -44,9 +44,9 @@
         <div class="card-header">
             Output
         </div>
-        <pre id="output" class="pl-3">...</pre>
+        <pre id="output" >...</pre>
         <hr />
-        <pre id="diff">&nbsp;&nbsp;&nbsp;...</pre>
+        <pre id="diff">...</pre>
     </div>
 </div>
 
@@ -56,6 +56,8 @@
         var file = $(code).text();
         var element = $('#diff');
         element.empty();
+        $('#diff').append('<pre><strong>K Kentico</strong></pre>')
+        $('#diff').append('<pre><em>F file system</em></pre><br />')
         var fullUrl = 'viewdiff?file=' + encodeURIComponent(file) + '&tempFolder=' + encodeURIComponent(tempFolder) + "&origFolder=" + encodeURIComponent(origFolder);
         fetch(fullUrl)
             // Retrieve its body as ReadableStream
