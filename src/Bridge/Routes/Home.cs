@@ -1,10 +1,7 @@
 ﻿using Bridge.Application;
 using Nancy;
 using Nancy.Security;
-using System;
-using System.Collections.Generic;
 using System.Configuration;
-using System.Linq;
 using System.Web;
 
 namespace Bridge.Routes
@@ -13,14 +10,22 @@ namespace Bridge.Routes
     {
         public Home()
         {
-            this.RequiresAuthentication();
-            Get("/", parameters => {
+            this.RequiresAuthentication(HttpContext.Current);
+            Get("/index", parameters => {
                 var bridgeCoreConfigs = BridgeConfiguration.GetConfig().CoreConfigs;
                 var bridgeContentConfigs = BridgeConfiguration.GetConfig().ContentConfigs;
-                var model = new { coreConfigs = bridgeCoreConfigs, contentConfigs = bridgeContentConfigs, urlBase = (ConfigurationManager.AppSettings["BridgeBaseUrl"] ?? "/bridge").ToString() };
-                return View["Views/Index",model];
+                var currentRequest = Request.Url;
+                currentRequest.Path = (ConfigurationManager.AppSettings["BridgeBaseUrl"] ?? "/Admin/BridgeUI").ToString();
+                var model = new { coreConfigs = bridgeCoreConfigs, contentConfigs = bridgeContentConfigs, urlBase = currentRequest.ToString() };
+                return View["Index", model];
             });
-            Get("/about", parameters => "Hello BridgeCI");
+            Get("/about", parameters => "Hello from Bridge -|--|-");
+            //Get("/{all*}", parameters =>
+            //{
+            //    //If you are having serious problems hitting anything, uncomment this
+            //    var test = Request;
+            //    return "catchall";
+            //});
         }
     }
 }

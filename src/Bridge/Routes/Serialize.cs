@@ -24,7 +24,7 @@ namespace Bridge.Routes
         /// </summary>
         public Serialize()
         {
-            this.RequiresAuthentication();
+            this.RequiresAuthentication(HttpContext.Current);
             Get("/serializecore/{id}", parameters =>
             {
                 var response = new Response();
@@ -175,7 +175,7 @@ namespace Bridge.Routes
                     var res = serializer.Serialize(mappedItem);
                     stringBuilder.AppendLine(res);
                     var pathToWriteTo = $"{serializationPath}/{mappedItem.ClassName.ToLower()}.yaml";
-                    var concretePath = HttpContext.Current.Server.MapPath(pathToWriteTo);
+                    var concretePath = this.GetRootPath(pathToWriteTo);
                     FileInfo file = new FileInfo(concretePath);
                     file.Directory.Create(); // If the directory already exists, this method does nothing.
                     File.WriteAllText(concretePath, res);
@@ -225,7 +225,7 @@ namespace Bridge.Routes
                 var res = serializer.Serialize(mappedItem);
                 stringBuilder.AppendLine(res);
                 var pathToWriteTo = $"{serializationPath}/{mappedItem.NodeAliasPath}#{mappedItem.DocumentCulture}.yaml";
-                var concretePath = HttpContext.Current.Server.MapPath(pathToWriteTo);
+                var concretePath = this.GetRootPath(pathToWriteTo);
                 FileInfo file = new FileInfo(concretePath);
                 file.Directory.Create(); // If the directory already exists, this method does nothing.
                 File.WriteAllText(concretePath, res);

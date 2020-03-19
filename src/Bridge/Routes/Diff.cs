@@ -25,8 +25,7 @@ namespace Bridge.Routes
     {
         public Diff()
         {
-            this.RequiresAuthentication();
-
+            this.RequiresAuthentication(HttpContext.Current);
             Get("/diffcore/{id}", parameters =>
             {
                 var response = new Response();
@@ -80,9 +79,9 @@ namespace Bridge.Routes
                     string tempFolder = Request.Query["tempFolder"];
                     string file = Request.Query["file"];
 
-                    var origPath = HttpContext.Current.Server.MapPath($"{origFolder}/{file}");
+                    var origPath = this.GetRootPath($"{origFolder}/{file}");
                     var origYamlFileContents = File.ReadAllText(origPath);
-                    var tempPath = HttpContext.Current.Server.MapPath($"{tempFolder}/{file}");
+                    var tempPath = this.GetRootPath($"{tempFolder}/{file}");
                     var tempFileContents = File.ReadAllText(tempPath);
 
                     var diffBuilder = new InlineDiffBuilder(new Differ());
@@ -176,7 +175,7 @@ namespace Bridge.Routes
                     stringBuilder.AppendLine(res);
 
                     var pathToMatching = $"{tempSerializationPath}/{mappedItem.ClassName.ToLower()}.yaml";
-                    var tempPath = HttpContext.Current.Server.MapPath(pathToMatching);
+                    var tempPath = this.GetRootPath(pathToMatching);
                     FileInfo file = new FileInfo(tempPath);
                     file.Directory.Create(); // If the directory already exists, this method does nothing.
                     File.WriteAllText(tempPath, res);
@@ -229,7 +228,7 @@ namespace Bridge.Routes
                 var res = serializer.Serialize(mappedItem);
                 stringBuilder.AppendLine(res);
                 var pathToWriteTo = $"{tempSerializationPath}/{mappedItem.NodeAliasPath}#{mappedItem.DocumentCulture}.yaml";
-                var concretePath = HttpContext.Current.Server.MapPath(pathToWriteTo);
+                var concretePath = this.GetRootPath(pathToWriteTo);
                 FileInfo file = new FileInfo(concretePath);
                 file.Directory.Create(); // If the directory already exists, this method does nothing.
                 File.WriteAllText(concretePath, res);
@@ -240,13 +239,13 @@ namespace Bridge.Routes
         }
 
 
-        private static void _clearTempFolder()
+        private void _clearTempFolder()
         {
             try
             {
                 //just trying to clean up some temp stuff from prev diffs
                 string serializationFolder = BridgeConfiguration.GetConfig().SerializationFolder;
-                var tempRoot = HttpContext.Current.Server.MapPath($"{serializationFolder}/temp");
+                var tempRoot = this.GetRootPath($"{serializationFolder}/temp");
                 DirectoryInfo di = new DirectoryInfo(tempRoot);
                 foreach (FileInfo file in di.EnumerateFiles())
                 {
@@ -263,13 +262,13 @@ namespace Bridge.Routes
             }
         }
 
-        private static void _processDifferences(Stream stream, Stopwatch watch, string serializationPath, string tempSerializationPath)
+        private void _processDifferences(Stream stream, Stopwatch watch, string serializationPath, string tempSerializationPath)
         {
             watch.Reset();
             watch.Start();
-            var concretePath = HttpContext.Current.Server.MapPath(serializationPath);
+            var concretePath = this.GetRootPath(serializationPath);
             var origYamlFiles = (Directory.Exists(concretePath))? Directory.EnumerateFiles(concretePath, "*.yaml", SearchOption.AllDirectories) : new List<string>();
-            var tempDiffPath = HttpContext.Current.Server.MapPath(tempSerializationPath);
+            var tempDiffPath = this.GetRootPath(tempSerializationPath);
             var tempYamlFiles = (Directory.Exists(tempDiffPath)) ? Directory.EnumerateFiles(tempDiffPath, "*.yaml", SearchOption.AllDirectories) : new List<string>();
             var origYamlHash = new Dictionary<string, string>();
             var tempYamlHash = new Dictionary<string, string>();

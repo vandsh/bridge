@@ -4,8 +4,10 @@ using Mapster;
 using Nancy;
 using Nancy.Authentication.Basic;
 using Nancy.Bootstrapper;
+using Nancy.Configuration;
 using Nancy.Conventions;
 using Nancy.TinyIoc;
+using System.Configuration;
 
 namespace Bridge.Application
 {
@@ -19,13 +21,19 @@ namespace Bridge.Application
                 .Ignore(dest => dest.AssignedSites)
                 .Ignore(dest => dest.AllowedChildTypes)
                 ;
-
-            pipelines.EnableBasicAuthentication(new BasicAuthenticationConfiguration(container.Resolve<IUserValidator>(), "BridgeRealm"));
+            
+            var userValidator = container.Resolve<IUserValidator>();
+            pipelines.EnableBasicAuthentication(new BasicAuthenticationConfiguration(userValidator, "BridgeRealm"));
         }
         protected override void ConfigureConventions(NancyConventions nancyConventions)
         {
-            nancyConventions.StaticContentsConventions.Add(StaticContentConventionBuilder.AddDirectory("Static", @"Static"));
-            base.ConfigureConventions(nancyConventions);
+            var rootPath = (ConfigurationManager.AppSettings["BridgeBaseUrl"] ?? "/Admin/BridgeUI").ToString();
+            nancyConventions.StaticContentsConventions.Add(StaticContentConventionBuilder.AddDirectory( $"{rootPath}/Static", @"Static"));
+        }
+
+        protected override IRootPathProvider RootPathProvider
+        {
+            get { return new CustomRootPathProvider(); }
         }
     }
 }

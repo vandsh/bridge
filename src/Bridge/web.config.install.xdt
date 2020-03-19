@@ -1,22 +1,44 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <configuration xmlns:xdt="http://schemas.microsoft.com/XML-Document-Transform">
-  <configSections xdt:Transform="Insert">
-    <section name="BridgeConfigSection" type="Bridge.Application.BridgeConfigSection, Bridge" />
+  <configSections>
+    <section type="Bridge.Application.BridgeConfigSection, Bridge" xdt:Transform="Remove" xdt:Locator="Match(type)"/>
+    <section name="BridgeConfigSection" type="Bridge.Application.BridgeConfigSection, Bridge"  xdt:Transform="Insert" />
   </configSections>
 
-  <BridgeConfigSection defaultsite="BridgeCIYaml" serializationfolder="~/serialization" xdt:Transform="Insert">
+  <appSettings>
+    <add key="BridgeBaseUrl" value="/Admin/BridgeUI"  xdt:Transform="Remove" xdt:Locator="Match(key)"/>
+    <add key="BridgeBaseUrl" value="/Admin/BridgeUI"  xdt:Transform="Insert" />
+    <add key="BridgeFolderLocation" value="Bridge"  xdt:Transform="Remove" xdt:Locator="Match(key)"/>
+    <add key="BridgeFolderLocation" value="Bridge"  xdt:Transform="Insert" />
+  </appSettings>
+
+  <BridgeConfigSection xdt:Transform="Remove" />
+  <BridgeConfigSection defaultsite="BridgeCIYaml" serializationfolder="/serialization" xdt:Transform="Insert">
     <CoreConfigs>
       <!-- break these configurations down to a module/feature level to allow you to sync at a good logical granularity-->
       <!--<add name="Example" classtypes="custom.basicpage" ignorefields="ClassID,ClassLastModified,ClassVersionGUID" />-->
       <add name="BaseClassTypes" classtypes="custom.basicpage" ignorefields="ClassID,ClassLastModified,ClassVersionGUID" />
     </CoreConfigs>
+
     <ContentConfigs>
       <!-- leverage the `query` attribute to help drive the location you are syncing along with the page types -->
       <!--<add name="Example" pagetypes="custom.basicpage" ignorefields="DocumentModifiedWhen,NodeOriginalNodeID,NodeID,NodeParentID,DocumentNodeID,NodeClassID,NodeOwner,DocumentID,NodeSKUID,DocumentCheckedOutVersionHistoryID" query="/%" />-->
       <add name="BaseContent" pagetypes="custom.basicpage" ignorefields="DocumentModifiedWhen,NodeOriginalNodeID,NodeID,NodeParentID,DocumentNodeID,NodeClassID,NodeOwner,DocumentID,NodeSKUID,DocumentCheckedOutVersionHistoryID" query="/%" />
     </ContentConfigs>
   </BridgeConfigSection>
-  <appSettings xdt:Transform="Insert">
-    <add key="BridgeBaseUrl" value="/bridge"/>
-  </appSettings>
+
+  <system.web>
+    <httpHandlers xdt:Transform="InsertIfMissing">
+      <add verb="*" type="Nancy.Hosting.Aspnet.NancyHttpRequestHandler" path="BridgeUI/*" xdt:Transform="Remove" xdt:Locator="Match(type)"/>
+      <add verb="*" type="Nancy.Hosting.Aspnet.NancyHttpRequestHandler" path="BridgeUI/*" xdt:Transform="Insert" />
+    </httpHandlers>
+  </system.web>
+
+  <system.webServer>
+    <handlers>
+      <add  name="Nancy" verb="*" type="Nancy.Hosting.Aspnet.NancyHttpRequestHandler" path="BridgeUI/*" xdt:Transform="Remove" xdt:Locator="Match(type)"/>
+      <add name="Nancy" verb="*" type="Nancy.Hosting.Aspnet.NancyHttpRequestHandler" path="BridgeUI/*"  xdt:Transform="Insert" />
+    </handlers>
+  </system.webServer>
 </configuration>
+

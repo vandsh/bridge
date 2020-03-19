@@ -25,7 +25,7 @@ namespace Bridge.Routes
         /// </summary>
         public Sync()
         {
-            this.RequiresAuthentication();
+            this.RequiresAuthentication(HttpContext.Current);
             Get("/synccore/{id}", parameters =>
             {
                 var response = new Response();
@@ -144,7 +144,7 @@ namespace Bridge.Routes
         private void _processClasses(int retryCount, List<AllowedChildClassInfo> allAllowedChildInfos, string coreConfigName, Stream stream, IDeserializer deserializer, Stopwatch watch, string serializationPath, IEnumerable<string> classTypes, IEnumerable<string> ignoreFields)
         {
             var retryClasses = new List<string>();
-            var concretePath = HttpContext.Current.Server.MapPath(serializationPath);
+            var concretePath = this.GetRootPath(serializationPath);
             var yamlFiles = Directory.EnumerateFiles(concretePath, "*.yaml", SearchOption.AllDirectories);
             foreach (string yamlFile in yamlFiles)
             {
@@ -232,7 +232,7 @@ namespace Bridge.Routes
             var pageTypes = contentConfig.GetPageTypes();
             var ignoreFields = contentConfig.GetIgnoreFields();
 
-            var concretePath = HttpContext.Current.Server.MapPath(serializationPath);
+            var concretePath = this.GetRootPath(serializationPath);
             var yamlFiles = Directory.EnumerateFiles(concretePath, "*.yaml", SearchOption.AllDirectories);
             foreach (string yamlFile in yamlFiles)
             {

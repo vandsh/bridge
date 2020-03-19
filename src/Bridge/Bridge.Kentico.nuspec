@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<package xmlns="http://schemas.microsoft.com/packaging/2010/07/nuspec.xsd">
+    <metadata>
+        <id>Bridge.Kentico</id>
+        <version>0.1.0-alpha</version>
+        <authors>Heartland Business Systems</authors>
+        <owners>vandsh</owners>
+        <license type="expression">MIT</license>
+        <projectUrl>https://github.com/vandsh/bridge</projectUrl>
+        <icon>static\logo.png</icon>
+        <requireLicenseAcceptance>false</requireLicenseAcceptance>
+        <description>A YAML based tool for facilitating the promotion of Kentico database items</description>
+        <releaseNotes>Initial 0.1.0 alpha release</releaseNotes>
+        <copyright>Copyright 2020 HBS</copyright>
+        <tags>kentico bridge deploy</tags>
+        <dependencies>
+            <group targetFramework=".NETFramework4.6.1"> 
+                <dependency id="Nancy" version="2.0.0" />
+                <dependency id="Nancy.Authentication.Basic" version="2.0.0" />
+                <dependency id="Nancy.Hosting.Aspnet" version="2.0.0" />
+                <dependency id="YamlDotNet" version="8.0.0" />
+                <dependency id="Mapster" version="4.1.1" />
+            </group>
+        </dependencies>
+    </metadata>
+    <files>
+        <file src="static\logo.png" target="static\" />
+        <file src="bin\Bridge.dll" target="lib\net461\" />
+        <file src="web.config.install.xdt" target="content\web.config.install.xdt" />
+        <file src="static\**" target="content\Bridge\static" />
+        <file src="Views\**" target="content\Bridge\Views" />
+    </files>
+</package>
