@@ -10,6 +10,7 @@
         <icon>static\logo.png</icon>
         <requireLicenseAcceptance>false</requireLicenseAcceptance>
         <description>A YAML based tool for facilitating the promotion of Kentico database items</description>
+        <summary>A YAML based tool for facilitating the promotion of Kentico database items</summary>
         <releaseNotes>Initial 0.1.0 alpha release</releaseNotes>
         <copyright>Copyright 2020 HBS</copyright>
         <tags>kentico bridge deploy</tags>
